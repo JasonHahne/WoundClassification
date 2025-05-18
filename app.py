@@ -3,6 +3,9 @@ import os
 from datetime import datetime
 from utils import predict_image
 
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # Suppress TF logs
+os.environ['CUDA_VISIBLE_DEVICES'] = '-1'  # Disable GPU
+
 # Initialize Flask app
 app = Flask(__name__)
 

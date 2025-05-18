@@ -5,11 +5,29 @@ from PIL import Image
 import tensorflow as tf
 from tensorflow import keras
 
-# Initialize model and classes
-main_folder = os.path.join('app', 'data', 'images')
-CLASSES = sorted(os.listdir(main_folder))
+CLASSES = [
+    "abrasion",
+    "acne",
+    "actinic keratosis",
+    "avulsions",
+    "bruise",
+    "bugbite",
+    "burn",
+    "cellulitis",
+    "chickenpox",
+    "cut",
+    "DFU",
+    "ingrown nails",
+    "measles",
+    "monkeypox",
+    "normal",
+    "pressure wounds",
+    "puncture",
+    "rosacea",
+    "venous wounds",
+    "warts"
+]
 
-# Custom loss function
 def focal_loss(y_true, y_pred):
     alpha = 0.25
     gamma = 2.0
@@ -20,29 +38,32 @@ def focal_loss(y_true, y_pred):
     weight = alpha * tf.pow(1 - y_pred, gamma)
     return tf.reduce_sum(ce * weight)
 
-# Load model
-with keras.utils.custom_object_scope({'focal_loss': focal_loss, 'loss': focal_loss}):
-    model = keras.models.load_model(os.path.join('app', 'models', 'data_v2-EfficientNetV2_v26_87.keras'))
+# Load model once at startup
+with keras.utils.custom_object_scope({'focal_loss': focal_loss}):
+    model = keras.models.load_model(
+        os.path.join('models', 'data_v2-EfficientNetV2_v26_87.keras'),
+        compile=False
+    )
+    model.make_predict_function()  # For thread safety
 
-def predict_image(image_path):
+def predict_image(file_stream):
+    """Process image from file upload stream"""
     try:
-        # Preprocess image
-        image = Image.open(image_path).convert('RGB')
-        image = np.array(image)
-        image = cv2.resize(image, (224, 224))
-        image = np.expand_dims(image.astype('float32') / 255.0, axis=0)
+        # Process in-memory
+        image = Image.open(file_stream).convert('RGB')
+        image = image.resize((224, 224))
+        image_array = np.array(image) / 255.0
+        image_array = np.expand_dims(image_array, axis=0)
 
         # Predict
-        preds = model.predict(image)[0]
+        preds = model.predict(image_array, verbose=0)[0]
 
-        # Process results
-        MIN_CONFIDENCE = 0.01
-        TOP_N = 5
-        filtered = [
-            {"class": CLASSES[i], "confidence": f"{p * 100:.2f}%", "probability": float(p)}
-            for i, p in enumerate(preds) if p >= MIN_CONFIDENCE
-        ]
-        return {"success": True, "predictions": sorted(filtered, key=lambda x: -x['probability'])[:TOP_N]}
-
+        # Format results
+        return {
+            "success": True,
+            "predictions": sorted([
+                {"class": CLASSES[i], "confidence": f"{p*100:.2f}%"}
+                for i, p in enumerate(preds) if p >= 0.01  # 1% threshold
+            ], key=lambda x: -float(x['confidence'][:-1]))[:5],}  # Top 5
     except Exception as e:
         return {"success": False, "error": str(e)}
