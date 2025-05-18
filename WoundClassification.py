@@ -108,45 +108,73 @@ base_model = keras.applications.EfficientNetV2S(weights = 'imagenet', input_shap
 # all the layers will be fine-tuned during training
 base_model.trainable = True
 
-# for layer in base_model.layers[:-30]: #x
-#     layer.trainable = False
+#for layer in base_model.layers[:-200]: #x
+    #layer.trainable = False
 
 #create a new model with more layers for our data
 
+embedding_layer = layers.Dense(128, activation='relu', name="embedding_layer")
+
 model = keras.Sequential([
   base_model,
-  #layers.Flatten(),
   layers.GlobalAveragePooling2D(),
-  layers.Dense(1024, activation = 'relu', kernel_regularizer= keras.regularizers.l2(5e-3)),
+  layers.Dense(1024, activation = 'relu', kernel_regularizer= keras.regularizers.l2(2e-3)),
   layers.BatchNormalization(), #remove this if not successful
-  layers.Dropout(0.5),
-  layers.Dense(512, activation='relu', kernel_regularizer= keras.regularizers.l2(4e-3)),
+  layers.Dropout(0.4),
+  layers.Dense(512, activation='relu', kernel_regularizer= keras.regularizers.l2(2e-3)),
   layers.BatchNormalization(),
   layers.Dropout(0.3),
-  layers.Dense(256, activation='relu', kernel_regularizer= keras.regularizers.l2(3e-3)),
+  layers.Dense(256, activation='relu', kernel_regularizer= keras.regularizers.l2(2e-3)),
   layers.BatchNormalization(),
-  layers.Dropout(0.3),
+  layers.Dropout(0.2),
+  layers.Dense(128, activation='relu', kernel_regularizer= keras.regularizers.l2(2e-3)),
+  layers.BatchNormalization(),
+  layers.Dropout(0.1),
+  embedding_layer,
   layers.Dense(num_classes, activation='softmax')
 ])
 
 from keras.optimizers import Adam
+from keras import backend as K
+from tensorflow.keras.optimizers.schedules import CosineDecay
+
+def focal_loss(alpha=0.25, gamma=2.0, smoothing=0.025):
+    def loss(y_true, y_pred):
+        y_true = y_true * (1-smoothing) + smoothing / num_classes
+        y_pred = K.clip(y_pred, 1e-9, 1.0)
+        ce = -y_true * K.log(y_pred)
+        weight = alpha * K.pow(1 - y_pred, gamma)
+        fl = ce * weight
+        #loss = -y_true * (alpha * K.pow(1 - y_pred, gamma) * K.log(y_pred))
+        return K.sum(fl)
+    return loss
+
+# Define the Cosine Decay schedule
+initial_lr = 1e-4
+decay_steps = 1000
+alpha = 1e-6
+
+cosine_decay = CosineDecay(initial_learning_rate=initial_lr, decay_steps=decay_steps,alpha=alpha)
 
 adam_opt = Adam(learning_rate=1e-4) # low value for transfer learning
+#adam_opt = Adam(learning_rate=cosine_decay)
 
-model.compile(optimizer = adam_opt, loss = 'categorical_crossentropy', metrics = ['accuracy'])
+model.compile(optimizer = adam_opt, loss = focal_loss(), metrics = ['accuracy'])
+#model.compile(optimizer = adam_opt, loss = 'categorical_crossentropy', metrics = ['accuracy'])
 
 #load the data
 train_datagen = ImageDataGenerator(
   preprocessing_function=keras.applications.efficientnet_v2.preprocess_input, #x
   rescale=1./255,
-  shear_range= 0.25,
-  zoom_range=0.3,
+  shear_range= 0.225,
+  zoom_range=0.275,
   horizontal_flip=True,
-  rotation_range=50,
-  width_shift_range=0.25,
-  height_shift_range=0.25,
-  brightness_range=(0.9,1.1), #x
-  channel_shift_range=0.15, #x
+  vertical_flip=True,
+  rotation_range=55,
+  width_shift_range=0.225,
+  height_shift_range=0.225,
+  brightness_range=(0.925,1.075),
+  channel_shift_range=0.125,
   fill_mode = 'nearest'
 )
 
@@ -179,17 +207,19 @@ test_generator = test_datagen.flow_from_directory(
   shuffle=False
 )
 
-EPOCHS = 300
+EPOCHS = 750
+log_dir = 'E:/WoundProject/logs'
 best_model_file = 'E:\WoundProject\data_v2-EfficientNetV2.keras'
 
-from keras.callbacks import ModelCheckpoint, ReduceLROnPlateau, EarlyStopping
+from keras.callbacks import ModelCheckpoint, ReduceLROnPlateau, EarlyStopping, TensorBoard
+
+tensorboard_callback = TensorBoard(log_dir=log_dir, histogram_freq=1)
 
 callbacks = [
   ModelCheckpoint(best_model_file, verbose=1, save_best_only=True, monitor="val_accuracy"),
-  ReduceLROnPlateau(monitor="val_accuracy", patience=8,factor=0.4,verbose=1, min_lr=1e-8),
-  #original: ReduceLROnPlateau(monitor="val_accuracy", patience=10,factor=0.1,verbose=1, min_lr=1e-6),
-  EarlyStopping(monitor="val_accuracy", patience=30,verbose=1, restore_best_weights=True),
-  #original: EarlyStopping(monitor="val_accuracy", patience=25,verbose=1)
+  ReduceLROnPlateau(monitor="val_accuracy", patience=6,factor=0.67,verbose=1, min_lr=1e-9),
+  EarlyStopping(monitor="val_accuracy", patience=20,verbose=1, restore_best_weights=True),
+  tensorboard_callback
 ]
 
 from sklearn.utils.class_weight import compute_class_weight
@@ -247,12 +277,14 @@ plt.legend()
 plt.grid(True)
 plt.show()
 
-test_loss, test_acc = model.evaluate(test_generator)
-print(f"Test Loss: {test_loss:4f}")
-print(f"Test Accuracy: {test_acc * 100:.4f}%")
-
+from sklearn.metrics import classification_report
 import seaborn as sns
 from sklearn.metrics import confusion_matrix
+
+# Evaluate test accuracy
+test_loss, test_acc = model.evaluate(test_generator)
+print(f"Test Loss: {test_loss:.4f}")
+print(f"Test Accuracy: {test_acc * 100:.4f}%")
 
 # Get tru labels and class names
 true_labels = test_generator.classes
@@ -271,3 +303,76 @@ plt.xlabel("Predicted Labels")
 plt.ylabel("True Labels")
 plt.title("Confusion Matrix")
 plt.show()
+
+# Get predictions from the model
+y_pred = np.argmax(predictions, axis = -1)
+
+# Print the classification report
+print("Classification Report:\n")
+print(classification_report(true_labels, y_pred, target_names=class_names, zero_division=1))
+
+from tensorflow.keras.models import Model
+from tensorboard.plugins import projector
+
+# Create model for embeddings
+embedding_model = Model(inputs=model.input, outputs=model.get_layer("embedding_layer").output)
+
+# Get file paths of test images
+test_file_paths = []
+test_labels = []
+
+for i in range(len(test_generator.filenames)):
+    test_file_paths.append(os.path.join(test_folder, test_generator.filenames[i]))
+    test_labels.append(test_generator.classes[i])
+
+# Read and preprocess images
+import cv2
+X_test_images = []
+
+for img_path in test_file_paths:
+    img = cv2.imread(img_path)
+    img = cv2.resize(img, (IMAGE_SIZE, IMAGE_SIZE))  # Resize
+    img = img / 255.0  # Normalize
+    X_test_images.append(img)
+
+X_test_images = np.array(X_test_images)
+
+# Generate embeddings manually
+embeddings = embedding_model.predict(X_test_images)
+
+labels = test_generator.classes
+
+# Create a checkpoint directory
+checkpoint_dir = os.path.join(log_dir, "checkpoint")
+os.makedirs(checkpoint_dir, exist_ok=True)
+
+# Save model checkpoint
+checkpoint_path = os.path.join(checkpoint_dir, "model")
+model.save(checkpoint_path)
+
+# Save embeddings & metadata
+np.savetxt(os.path.join(log_dir, 'embeddings.tsv'), embeddings, delimiter='\t')
+
+# Save class labels for metadata
+class_names = list(test_generator.class_indices.keys())
+metadata_path = os.path.join(log_dir, 'metadata.tsv')
+
+with open(metadata_path, 'w') as f:
+    for label in test_labels:  # Ensure labels are correctly mapped
+        f.write(f'{class_names[label]}\n')
+
+# Ensure correct tensor name
+embedding_tensor_name = embedding_model.get_layer("embedding_layer").output.name.split(":")[0]
+
+# Configure TensorBoard embedding visualization
+config = projector.ProjectorConfig()
+embedding = config.embeddings.add()
+embedding.tensor_name = embedding_tensor_name
+embedding.metadata_path = "metadata.tsv"
+
+# Save the projector config file
+with open(os.path.join(log_dir, "projector_config.pbtxt"), "w") as f:
+    f.write(str(config))
+
+print(f"Embeddings and metadata saved in {log_dir}")
+print(embedding_model.get_layer("embedding_layer").output.name)
