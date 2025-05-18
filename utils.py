@@ -20,11 +20,9 @@ def focal_loss(y_true, y_pred):
     weight = alpha * tf.pow(1 - y_pred, gamma)
     return tf.reduce_sum(ce * weight)
 
-
 # Load model
 with keras.utils.custom_object_scope({'focal_loss': focal_loss, 'loss': focal_loss}):
     model = keras.models.load_model(os.path.join('app', 'models', 'data_v2-EfficientNetV2_v26_87.keras'))
-
 
 def predict_image(image_path):
     try:

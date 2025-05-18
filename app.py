@@ -11,7 +11,6 @@ app.config['UPLOAD_FOLDER'] = os.path.join('static', 'uploads')
 app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024  # 5MB limit
 app.secret_key = os.environ.get('SECRET_KEY', 'dev-secret-key-123')
 
-
 @app.route('/', methods=['GET', 'POST'])
 def home():
     if request.method == 'POST':
@@ -50,7 +49,6 @@ def home():
             return render_template('index.html', error=str(e))
 
     return render_template('index.html')
-
 
 # Run the application directly only in development
 if __name__ == '__main__':
