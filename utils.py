@@ -50,7 +50,6 @@ def assemble_model():
         logger.error(f"Model assembly failed: {str(e)}")
         raise
 
-
 def predict_image(file_stream):
     """Process image and run prediction"""
     try:
