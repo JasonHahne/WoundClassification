@@ -1,59 +1,60 @@
-from flask import Flask, render_template, request, redirect, url_for
 import os
-from datetime import datetime
-from utils import predict_image
-
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # Suppress TF logs
-os.environ['CUDA_VISIBLE_DEVICES'] = '-1'  # Disable GPU
+from flask import Flask, request, render_template, jsonify
+from utils import assemble_model, predict_image
+import onnxruntime as ort
 
 # Initialize Flask app
 app = Flask(__name__)
-
-# Configuration
-app.config['UPLOAD_FOLDER'] = os.path.join('static', 'uploads')
 app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024  # 5MB limit
-app.secret_key = os.environ.get('SECRET_KEY', 'dev-secret-key-123')
 
-@app.route('/', methods=['GET', 'POST'])
+
+# Model initialization
+@app.before_first_request
+def initialize_model():
+    try:
+        model_path = assemble_model()
+        app.config['MODEL_SESSION'] = ort.InferenceSession(model_path)
+        app.logger.info("Model initialized successfully")
+    except Exception as e:
+        app.logger.error(f"Model initialization failed: {str(e)}")
+        raise
+
+
+# Routes
+@app.route('/')
 def home():
-    if request.method == 'POST':
-        if 'file' not in request.files:
-            return render_template('index.html', error="No file selected")
-
-        file = request.files['file']
-        if file.filename == '':
-            return render_template('index.html', error="No file selected")
-
-        try:
-            # Generate unique filename
-            timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-            filename = f"{timestamp}_{file.filename}"
-            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-
-            # Save file
-            file.save(filepath)
-
-            # Get predictions
-            result = predict_image(filepath)
-
-            # Cleanup
-            try:
-                os.remove(filepath)
-            except:
-                pass
-
-            if result['success']:
-                return render_template('index.html',
-                                       predictions=result['predictions'],
-                                       uploaded_image=filename)
-            return render_template('index.html', error=result['error'])
-
-        except Exception as e:
-            return render_template('index.html', error=str(e))
-
     return render_template('index.html')
 
-# Run the application directly only in development
+
+@app.route('/predict', methods=['POST'])
+def predict():
+    if 'file' not in request.files:
+        return jsonify({"error": "No file uploaded"}), 400
+
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({"error": "Empty filename"}), 400
+
+    try:
+        result = predict_image(file.stream)
+        return jsonify({
+            "success": True,
+            "predictions": result
+        })
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": f"Prediction failed: {str(e)}"
+        }), 500
+
+
 if __name__ == '__main__':
-    os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-    app.run(host='0.0.0.0', port=10000, debug=True)  # Added debug flag
+    # Verify critical files
+    required = ["models", "utils.py", "requirements.txt"]
+    missing = [item for item in required if not os.path.exists(item)]
+
+    if missing:
+        raise FileNotFoundError(f"Missing required files/dirs: {missing}")
+
+    # Start app
+    app.run(host='0.0.0.0', port=10000)

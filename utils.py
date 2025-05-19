@@ -1,69 +1,96 @@
 import os
-import cv2
+import glob
+import logging
 import numpy as np
 from PIL import Image
-import tensorflow as tf
-from tensorflow import keras
+import onnxruntime as ort
 
-CLASSES = [
-    "abrasion",
-    "acne",
-    "actinic keratosis",
-    "avulsions",
-    "bruise",
-    "bugbite",
-    "burn",
-    "cellulitis",
-    "chickenpox",
-    "cut",
-    "DFU",
-    "ingrown nails",
-    "measles",
-    "monkeypox",
-    "normal",
-    "pressure wounds",
-    "puncture",
-    "rosacea",
-    "venous wounds",
-    "warts"
-]
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-def focal_loss(y_true, y_pred):
-    alpha = 0.25
-    gamma = 2.0
-    smoothing = 0.025
-    y_true = y_true * (1 - smoothing) + smoothing / len(CLASSES)
-    y_pred = tf.clip_by_value(y_pred, 1e-9, 1.0)
-    ce = -y_true * tf.math.log(y_pred)
-    weight = alpha * tf.pow(1 - y_pred, gamma)
-    return tf.reduce_sum(ce * weight)
 
-# Load model once at startup
-with keras.utils.custom_object_scope({'focal_loss': focal_loss}):
-    model = keras.models.load_model(
-        os.path.join('models', 'data_v2-EfficientNetV2_v26_87.keras'),
-        compile=False
-    )
-    model.make_predict_function()  # For thread safety
+def assemble_model():
+    """Combine split ONNX files into single model file"""
+    model_name = "assembled_model.onnx"
+    parts_pattern = os.path.join("models", "model.onnx.part*")
+
+    # Check if model already exists
+    if os.path.exists(model_name):
+        logger.info("Found existing assembled model")
+        return model_name
+
+    logger.info("Assembling model from parts...")
+
+    # Get sorted list of parts
+    parts = sorted(glob.glob(parts_pattern),
+                   key=lambda x: int(x.split("part")[-1]))
+
+    # Check for missing parts
+    if not parts:
+        raise FileNotFoundError("No model parts found in models/ directory")
+
+    try:
+        total_size = sum(os.path.getsize(p) for p in parts)
+        logger.info(f"Found {len(parts)} parts, total size: {total_size / 1024 / 1024:.2f}MB")
+
+        # Assemble parts
+        with open(model_name, "wb") as outfile:
+            for part in parts:
+                logger.debug(f"Adding {part}")
+                with open(part, "rb") as infile:
+                    outfile.write(infile.read())
+
+        logger.info(f"Successfully assembled {model_name}")
+        return model_name
+
+    except Exception as e:
+        # Clean up if assembly failed
+        if os.path.exists(model_name):
+            os.remove(model_name)
+        logger.error(f"Model assembly failed: {str(e)}")
+        raise
+
 
 def predict_image(file_stream):
-    """Process image from file upload stream"""
+    """Process image and run prediction"""
     try:
-        # Process in-memory
-        image = Image.open(file_stream).convert('RGB')
-        image = image.resize((224, 224))
-        image_array = np.array(image) / 255.0
-        image_array = np.expand_dims(image_array, axis=0)
+        # Load image
+        img = Image.open(file_stream).convert('RGB')
 
-        # Predict
-        preds = model.predict(image_array, verbose=0)[0]
+        # Preprocess
+        img = img.resize((224, 224))  # Match model input size
+        img_array = np.array(img).astype(np.float32) / 255.0
+        img_array = np.expand_dims(img_array.transpose(2, 0, 1), axis=0)  # CHW format
 
-        # Format results
-        return {
-            "success": True,
-            "predictions": sorted([
-                {"class": CLASSES[i], "confidence": f"{p*100:.2f}%"}
-                for i, p in enumerate(preds) if p >= 0.01  # 1% threshold
-            ], key=lambda x: -float(x['confidence'][:-1]))[:5],}  # Top 5
+        # Run inference
+        session = ort.InferenceSession("assembled_model.onnx")
+        inputs = {session.get_inputs()[0].name: img_array}
+        outputs = session.run(None, inputs)
+
+        # Process outputs
+        class_names = [
+            "abrasion", "acne", "actinic keratosis", "avulsions",
+            "bruise", "bugbite", "burn", "cellulitis", "chickenpox",
+            "cut", "DFU", "ingrown nails", "measles", "monkeypox",
+            "normal", "pressure wounds", "puncture", "rosacea",
+            "venous wounds", "warts"
+        ]
+
+        probabilities = outputs[0][0]
+        results = []
+
+        for i, prob in enumerate(probabilities):
+            if prob >= 0.01:  # 1% confidence threshold
+                results.append({
+                    "class": class_names[i],
+                    "confidence": f"{prob * 100:.2f}%",
+                    "probability": float(prob)
+                })
+
+        # Sort and return top 5
+        return sorted(results, key=lambda x: -x['probability'])[:5]
+
     except Exception as e:
-        return {"success": False, "error": str(e)}
+        logger.error(f"Prediction error: {str(e)}")
+        raise
