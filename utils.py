@@ -9,7 +9,6 @@ import onnxruntime as ort
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-
 def assemble_model():
     """Combine split ONNX files into single model file"""
     model_name = "assembled_model.onnx"

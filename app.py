@@ -7,7 +7,6 @@ import onnxruntime as ort
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024  # 5MB limit
 
-
 # Model initialization
 @app.before_first_request
 def initialize_model():
@@ -18,7 +17,6 @@ def initialize_model():
     except Exception as e:
         app.logger.error(f"Model initialization failed: {str(e)}")
         raise
-
 
 # Routes
 @app.route('/')
