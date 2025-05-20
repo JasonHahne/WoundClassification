@@ -7,16 +7,14 @@ import onnxruntime as ort
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024  # 5MB limit
 
-# Model initialization
-@app.before_first_request
-def initialize_model():
-    try:
-        model_path = assemble_model()
-        app.config['MODEL_SESSION'] = ort.InferenceSession(model_path)
-        app.logger.info("Model initialized successfully")
-    except Exception as e:
-        app.logger.error(f"Model initialization failed: {str(e)}")
-        raise
+# Initialize model directly (no longer using before_first_request)
+try:
+    model_path = assemble_model()
+    app.config['MODEL_SESSION'] = ort.InferenceSession(model_path)
+    app.logger.info("Model initialized successfully")
+except Exception as e:
+    app.logger.error(f"Model initialization failed: {str(e)}")
+    raise
 
 # Routes
 @app.route('/')
@@ -43,7 +41,6 @@ def predict():
             "success": False,
             "error": f"Prediction failed: {str(e)}"
         }), 500
-
 
 if __name__ == '__main__':
     # Verify critical files
