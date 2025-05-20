@@ -1,3 +1,2 @@
-*.part* binary -diff
-*.onnx binary -diff
-*.bin binary -diff
+*.py diff=python
+*.ipynb filter= -diff
