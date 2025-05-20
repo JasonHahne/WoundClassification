@@ -1,6 +1,6 @@
 import os
 from flask import Flask, request, render_template, jsonify
-from utils import assemble_model, predict_image
+from utils import predict_image
 import onnxruntime as ort
 
 app = Flask(__name__)
@@ -13,7 +13,7 @@ try:
         raise FileNotFoundError("models directory not found")
 
     # Assemble and load model
-    model_path = assemble_model()
+    model_path = "wound_model.onnx"
     if not os.path.exists(model_path):
         raise FileNotFoundError(f"Assembled model not found at {model_path}")
 

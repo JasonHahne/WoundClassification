@@ -11,14 +11,14 @@ logger = logging.getLogger(__name__)
 
 def assemble_model():
     """Combine split ONNX files into single model file"""
-    model_name = "assembled_model.onnx"
+    model_name = "wound_model.onnx"
     models_dir = "models"
 
     # Verify models directory exists
     if not os.path.exists(models_dir):
         raise FileNotFoundError(f"Models directory '{os.path.abspath(models_dir)}' not found")
 
-    parts_pattern = os.path.join(models_dir, "model.onnx.part*")
+    parts_pattern = os.path.join(models_dir, "wound_model.onnx.part*")
     parts = sorted(glob.glob(parts_pattern),
                    key=lambda x: int(x.split("part")[-1]))
 
@@ -59,7 +59,7 @@ def predict_image(file_stream):
         img_array = np.expand_dims(img_array.transpose(2, 0, 1), axis=0)
 
         # Run inference
-        session = ort.InferenceSession("assembled_model.onnx")
+        session = ort.InferenceSession("wound_model.onnx")
         inputs = {session.get_inputs()[0].name: img_array}
         outputs = session.run(None, inputs)
 
