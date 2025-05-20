@@ -11,13 +11,14 @@ logger = logging.getLogger(__name__)
 
 def assemble_model():
     """Combine split ONNX files into single model file"""
-    model_name = "wound_model.onnx"
+    model_name = "wound_model.onnx"  # Match your actual model name
     models_dir = "models"
 
     # Verify models directory exists
     if not os.path.exists(models_dir):
         raise FileNotFoundError(f"Models directory '{os.path.abspath(models_dir)}' not found")
 
+    # Update pattern to match your actual split files
     parts_pattern = os.path.join(models_dir, "wound_model.onnx.part*")
     parts = sorted(glob.glob(parts_pattern),
                    key=lambda x: int(x.split("part")[-1]))
@@ -39,8 +40,8 @@ def assemble_model():
                 with open(part, "rb") as infile:
                     outfile.write(infile.read())
 
-        logger.info(f"Model assembly complete: {model_name}")
-        return model_name
+        logger.info(f"Model assembly complete: {os.path.abspath(model_name)}")
+        return os.path.abspath(model_name)  # Return absolute path
 
     except Exception as e:
         if os.path.exists(model_name):

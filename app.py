@@ -1,28 +1,27 @@
 import os
 from flask import Flask, request, render_template, jsonify
-from utils import predict_image
+from utils import assemble_model, predict_image
 import onnxruntime as ort
 
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024  # 5MB limit
 
-# Initialize model with error handling
+# Initialize model with absolute paths
 try:
-    # Verify models directory exists
-    if not os.path.exists('models'):
-        raise FileNotFoundError("models directory not found")
-
-    # Assemble and load model
-    model_path = "wound_model.onnx"
+    model_path = assemble_model()
     if not os.path.exists(model_path):
         raise FileNotFoundError(f"Assembled model not found at {model_path}")
+
+    # Verify model file size
+    file_size = os.path.getsize(model_path)
+    app.logger.info(f"Model size: {file_size / 1024 / 1024:.2f}MB")
 
     app.config['MODEL_SESSION'] = ort.InferenceSession(model_path)
     app.logger.info(f"Successfully loaded model from {model_path}")
 
 except Exception as e:
     app.logger.error(f"Critical initialization error: {str(e)}")
-    raise  # Fail fast if model can't load
+    raise
 
 
 @app.route('/')
