@@ -3,24 +3,24 @@ from flask import Flask, request, render_template, jsonify
 from utils import assemble_model, predict_image
 import onnxruntime as ort
 
-app = Flask(__name__)
+app = Flask(__name__, template_folder='templates')
 app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024  # 5MB limit
+app.secret_key = os.urandom(24)
 
-# Initialize model with absolute paths
+# Initialize model
 try:
+    if not os.path.exists('models'):
+        raise FileNotFoundError("Models directory not found")
+
     model_path = assemble_model()
     if not os.path.exists(model_path):
         raise FileNotFoundError(f"Assembled model not found at {model_path}")
 
-    # Verify model file size
-    file_size = os.path.getsize(model_path)
-    app.logger.info(f"Model size: {file_size / 1024 / 1024:.2f}MB")
-
     app.config['MODEL_SESSION'] = ort.InferenceSession(model_path)
-    app.logger.info(f"Successfully loaded model from {model_path}")
+    app.logger.info(f"Model loaded successfully: {os.path.getsize(model_path) / 1024 / 1024:.2f}MB")
 
 except Exception as e:
-    app.logger.error(f"Critical initialization error: {str(e)}")
+    app.logger.error(f"Initialization failed: {str(e)}")
     raise
 
 
@@ -36,18 +36,25 @@ def predict():
 
     file = request.files['file']
     if file.filename == '':
-        return jsonify({"error": "Empty filename"}), 400
+        return jsonify({"error": "No selected file"}), 400
 
     try:
+        # Validate file type
+        allowed_extensions = {'png', 'jpg', 'jpeg'}
+        if '.' not in file.filename or file.filename.split('.')[-1].lower() not in allowed_extensions:
+            return jsonify({"error": "Allowed formats: PNG, JPG, JPEG"}), 400
+
         result = predict_image(file.stream)
         return jsonify({
             "success": True,
             "predictions": result
         })
+
     except Exception as e:
+        app.logger.error(f"Prediction error: {str(e)}")
         return jsonify({
             "success": False,
-            "error": f"Prediction failed: {str(e)}"
+            "error": "Analysis failed. Please try another image."
         }), 500
 
 

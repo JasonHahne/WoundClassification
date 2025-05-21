@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wound.ai - Medical Image Analysis</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1><img src="{{ url_for('static', filename='logo.png') }}" alt="Wound.ai Logo" class="logo"> Wound.ai</h1>
+            <p class="tagline">AI-Powered Wound Classification System</p>
+        </header>
+
+        <main>
+            <div class="upload-card">
+                <form id="uploadForm" enctype="multipart/form-data">
+                    <div class="upload-box" id="dropZone">
+                        <input type="file" id="fileInput" name="file" accept="image/*" hidden>
+                        <label for="fileInput" class="upload-label">
+                            <div class="upload-icon">📁</div>
+                            <div class="upload-text">Click to upload wound image</div>
+                            <div class="upload-subtext">Supports: JPG, PNG (Max 5MB)</div>
+                        </label>
+                        <img id="previewImage" class="preview-image" alt="Image preview">
+                    </div>
+                    <button type="submit" class="analyze-button">Analyze Image</button>
+                </form>
+            </div>
+
+            <div id="results" class="results-container">
+                <!-- Results will be inserted here -->
+            </div>
+        </main>
+
+        <footer>
+            <p>© 2024 Wound.ai - Medical AI Diagnostics</p>
+        </footer>
+    </div>
+
+    <script>
+        // Drag and drop functionality
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const previewImage = document.getElementById('previewImage');
+
+        // Drag and drop handlers
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('dragover');
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                fileInput.files = files;
+                handleFileSelect(files[0]);
+            }
+        });
+
+        // File input change handler
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFileSelect(e.target.files[0]);
+            }
+        });
+
+        // Form submission handler
+        document.getElementById('uploadForm').onsubmit = async (e) => {
+            e.preventDefault();
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+
+            try {
+                const response = await fetch('/predict', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) throw new Error('Server error');
+                const result = await response.json();
+
+                if (result.error) throw new Error(result.error);
+                displayResults(result.predictions);
+
+            } catch (error) {
+                showError(error.message);
+            }
+        };
+
+        function handleFileSelect(file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                previewImage.src = e.target.result;
+                previewImage.style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function displayResults(predictions) {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = predictions.map(pred => `
+                <div class="result-item">
+                    <div class="class-name">${pred.class}</div>
+                    <div class="confidence-bar">
+                        <div class="confidence-fill" style="width: ${parseFloat(pred.confidence)}%"></div>
+                    </div>
+                    <div class="confidence-value">${pred.confidence}</div>
+                </div>
+            `).join('');
+        }
+
+        function showError(message) {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = `
+                <div class="error-message">
+                    ⚠️ ${message}
+                </div>
+            `;
+        }
+    </script>
+</body>
+</html>
