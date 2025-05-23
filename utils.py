@@ -2,65 +2,66 @@ import os
 import glob
 import logging
 import numpy as np
+from pathlib import Path
 from PIL import Image
 import onnxruntime as ort
+from tensorflow.keras.applications import efficientnet_v2
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def assemble_model():
+def assemble_model(models_dir: Path) -> Path:
     """Combine split ONNX files into single model file"""
-    model_name = "wound_model.onnx"  # Match your actual model name
-    models_dir = "models"
+    model_name = "wound_model.onnx"
+    model_path = models_dir / model_name
 
-    # Verify models directory exists
-    if not os.path.exists(models_dir):
-        raise FileNotFoundError(f"Models directory '{os.path.abspath(models_dir)}' not found")
+    if model_path.exists():
+        logger.info(f"Found existing model at {model_path}")
+        return model_path
 
-    # Update pattern to match your actual split files
-    parts_pattern = os.path.join(models_dir, "wound_model.onnx.part*")
-    parts = sorted(glob.glob(parts_pattern),
+    # Find all model parts
+    parts_pattern = models_dir / "wound_model.onnx.part*"
+    parts = sorted(glob.glob(str(parts_pattern)),
                    key=lambda x: int(x.split("part")[-1]))
 
     if not parts:
-        available = "\n".join(os.listdir(models_dir))
-        raise FileNotFoundError(
-            f"No model parts found in {models_dir}\n"
-            f"Directory contents:\n{available}"
-        )
+        raise FileNotFoundError(f"No model parts found in {models_dir}")
 
-    # Assembly process
+    logger.info(f"Assembling model from {len(parts)} parts...")
+
     try:
-        logger.info(f"Found {len(parts)} model parts")
-
-        with open(model_name, "wb") as outfile:
+        with open(model_path, "wb") as outfile:
             for part in parts:
                 logger.info(f"Adding {os.path.basename(part)}")
                 with open(part, "rb") as infile:
                     outfile.write(infile.read())
 
-        logger.info(f"Model assembly complete: {os.path.abspath(model_name)}")
-        return os.path.abspath(model_name)  # Return absolute path
+        logger.info(f"Model assembly complete: {model_path}")
+        return model_path
 
     except Exception as e:
-        if os.path.exists(model_name):
-            os.remove(model_name)
+        if model_path.exists():
+            model_path.unlink()
         logger.error(f"Assembly failed: {str(e)}")
         raise
 
 
-def predict_image(file_stream):
-    """Process image and return predictions"""
+def predict_image(file_stream, session: ort.InferenceSession):
+    """Process image and return predictions using ONNX session"""
     try:
-        # Load and preprocess image
+        # Load and preprocess image to match training
         img = Image.open(file_stream).convert('RGB')
         img = img.resize((224, 224))
-        img_array = np.array(img).astype(np.float32) / 255.0
+        img_array = np.array(img).astype(np.float32)
+
+        # Apply EfficientNetV2 preprocessing
+        img_array = efficientnet_v2.preprocess_input(img_array)
+
+        # Add batch dimension and convert to NCHW format
         img_array = np.expand_dims(img_array.transpose(2, 0, 1), axis=0)
 
         # Run inference
-        session = ort.InferenceSession("wound_model.onnx")
         inputs = {session.get_inputs()[0].name: img_array}
         outputs = session.run(None, inputs)
 
@@ -73,15 +74,16 @@ def predict_image(file_stream):
             "venous wounds", "warts"
         ]
 
+        probabilities = outputs[0][0]
         return sorted([
             {
                 "class": name,
                 "confidence": f"{prob * 100:.2f}%",
                 "probability": float(prob)
             }
-            for name, prob in zip(class_names, outputs[0][0])
-            if prob >= 0.01
-        ], key=lambda x: -x['probability'])[:5]
+            for name, prob in zip(class_names, probabilities)
+            if prob >= 0.01  # Filter out low-confidence results
+        ], key=lambda x: -x['probability'])[:5]  # Return top 5 results
 
     except Exception as e:
         logger.error(f"Prediction error: {str(e)}")
