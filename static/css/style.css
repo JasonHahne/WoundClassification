@@ -23,6 +23,7 @@ body {
     flex-grow: 1;
 }
 
+/* Header layout */
 header {
     text-align: center;
     margin: 2rem 0;
@@ -53,13 +54,56 @@ h1 {
     margin-top: 0.5rem;
 }
 
+/* Upload box styling */
+.upload-card {
+    background: white;
+    border-radius: 15px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    padding: 2rem;
+    margin: 2rem auto;
+    max-width: 800px;
+}
+
+.upload-box {
+    border: 2px dashed var(--primary-color);
+    border-radius: 12px;
+    padding: 2rem;
+    position: relative;
+    background: #F8FAFF;
+    min-height: 300px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.upload-label {
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.3s ease;
+}
+
 .upload-box.has-image .upload-label {
     opacity: 0;
     pointer-events: none;
 }
 
+.preview-image {
+    max-width: 100%;
+    max-height: 400px;
+    object-fit: contain;
+    border-radius: 8px;
+    display: none;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
 .upload-box.has-image .preview-image {
     display: block;
+    width: auto;
+    height: auto;
+    max-width: 90%;
+    max-height: 90%;
+    margin: auto;
 }
 
 .clear-btn {
@@ -89,7 +133,6 @@ h1 {
     display: block;
 }
 
-/* Rest of your existing styles */
 .loading-overlay {
     display: none;
     position: fixed;

@@ -19,8 +19,7 @@ def assemble_model(models_dir: Path) -> Path:
         logger.info(f"Found existing model at {model_path}")
         return model_path
 
-    # Find all model parts
-    parts_pattern = models_dir / "wound_model.onnx.part*"
+    parts_pattern = models_dir / "wound_model_v26.onnx.part*"
     parts = sorted(glob.glob(str(parts_pattern)),
                    key=lambda x: int(x.split("part")[-1]))
 
@@ -47,30 +46,32 @@ def assemble_model(models_dir: Path) -> Path:
 
 
 def preprocess_image(img: Image.Image) -> np.ndarray:
-    """Proper NHWC format for ONNX model"""
-    # Convert to array and normalize
-    img_array = np.array(img.resize((224, 224))).astype(np.float32) / 255.0
+    """EXACT preprocessing from training pipeline"""
+    # Convert to array and resize
+    img = img.resize((224, 224))
+    img_array = np.array(img).astype(np.float32)
 
-    # EfficientNetV2 preprocessing (scale to [-1, 1])
-    img_array = (img_array - 0.5) * 2.0
+    # Replicate keras.applications.efficientnet_v2.preprocess_input
+    img_array = img_array[..., ::-1]  # RGB -> BGR
+    img_array = (img_array - 91.4953) / (255 - 91.4953)  # Original model preprocessing
 
-    # Add batch dimension (NHWC format)
-    return np.expand_dims(img_array, axis=0)  # Shape: (1, 224, 224, 3)
+    # Add batch dimension
+    return np.expand_dims(img_array, axis=0)
 
 
 def predict_image(file_stream, session: ort.InferenceSession):
+    """Process image and return predictions"""
     try:
-        # Load image and preprocess
         img = Image.open(file_stream).convert('RGB')
         input_tensor = preprocess_image(img)
 
-        # Get input name dynamically
+        # Get input details
         input_name = session.get_inputs()[0].name
 
         # Run inference
         outputs = session.run(None, {input_name: input_tensor})
 
-        # Format results (keep your existing class names)
+        # Format results
         class_names = [
             "abrasion", "acne", "actinic keratosis", "avulsions",
             "bruise", "bugbite", "burn", "cellulitis", "chickenpox",

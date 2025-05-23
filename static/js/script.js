@@ -4,6 +4,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const previewImage = document.getElementById('previewImage');
     const loadingOverlay = document.getElementById('loadingOverlay');
     const analyzeButton = document.getElementById('analyzeButton');
+    const resultsDiv = document.getElementById('results');
 
     // Create clear button
     const clearBtn = document.createElement('button');
@@ -12,8 +13,9 @@ document.addEventListener('DOMContentLoaded', () => {
     clearBtn.title = 'Remove image';
     clearBtn.onclick = () => {
         fileInput.value = '';
-        dropZone.classList.remove('has-image', 'dragover');
+        dropZone.classList.remove('has-image');
         previewImage.style.display = 'none';
+        resultsDiv.innerHTML = ''; // Clear results
     };
     dropZone.appendChild(clearBtn);
 
@@ -48,6 +50,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             dropZone.classList.remove('has-image');
             previewImage.style.display = 'none';
+            resultsDiv.innerHTML = '';
         }
     });
 

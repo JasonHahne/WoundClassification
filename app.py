@@ -5,35 +5,33 @@ from flask import Flask, request, render_template, jsonify
 from utils import assemble_model, predict_image
 import onnxruntime as ort
 
-# Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__, template_folder='templates')
 app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024  # 5MB limit
 
-# Initialize model once during startup
+# Initialize model once
 try:
     logger.info("Initializing model...")
     models_dir = Path("models")
     model_path = assemble_model(models_dir)
 
-    # Verify model file exists
-    if not model_path.exists():
-        raise FileNotFoundError(f"Model not found at {model_path}")
-
-    # Configure ONNX runtime for low memory usage
+    # Configure ONNX runtime
     so = ort.SessionOptions()
     so.intra_op_num_threads = 1
     so.inter_op_num_threads = 1
 
-    # Create inference session
+    # Create session
     app.config['MODEL_SESSION'] = ort.InferenceSession(
         str(model_path),
         sess_options=so,
         providers=['CPUExecutionProvider']
     )
-    logger.info(f"Model loaded successfully ({model_path.stat().st_size / 1024 / 1024:.1f}MB)")
+
+    # Verify input shape
+    input_shape = app.config['MODEL_SESSION'].get_inputs()[0].shape
+    logger.info(f"Model input shape: {input_shape}")
 
 except Exception as e:
     logger.error(f"Model initialization failed: {str(e)}")
@@ -70,5 +68,7 @@ def predict():
         logger.error(f"Prediction error: {str(e)}", exc_info=True)
         return jsonify({"success": False, "error": "Analysis failed. Please try again."}), 500
 
+
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=12229)
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host='0.0.0.0', port=port)
