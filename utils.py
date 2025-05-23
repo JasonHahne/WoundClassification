@@ -5,7 +5,6 @@ import numpy as np
 from pathlib import Path
 from PIL import Image
 import onnxruntime as ort
-from tensorflow.keras.applications import efficientnet_v2
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -47,25 +46,37 @@ def assemble_model(models_dir: Path) -> Path:
         raise
 
 
+def preprocess_image(img: Image.Image) -> np.ndarray:
+    """Replacement for efficientnet_v2.preprocess_input without TensorFlow"""
+    # Convert to array and normalize to [0, 1]
+    img_array = np.array(img).astype(np.float32) / 255.0
+
+    # Standard EfficientNetV2 preprocessing
+    # Scale to [-1, 1] range
+    img_array = (img_array - 0.5) * 2.0
+
+    # Convert from HWC to CHW format
+    return img_array.transpose(2, 0, 1)
+
+
 def predict_image(file_stream, session: ort.InferenceSession):
     """Process image and return predictions using ONNX session"""
     try:
-        # Load and preprocess image to match training
+        # Load and resize image
         img = Image.open(file_stream).convert('RGB')
         img = img.resize((224, 224))
-        img_array = np.array(img).astype(np.float32)
 
-        # Apply EfficientNetV2 preprocessing
-        img_array = efficientnet_v2.preprocess_input(img_array)
+        # Preprocess without TensorFlow
+        img_array = preprocess_image(img)
 
-        # Add batch dimension and convert to NCHW format
-        img_array = np.expand_dims(img_array.transpose(2, 0, 1), axis=0)
+        # Add batch dimension
+        img_array = np.expand_dims(img_array, axis=0)
 
         # Run inference
         inputs = {session.get_inputs()[0].name: img_array}
         outputs = session.run(None, inputs)
 
-        # Format results
+        # Format results (keep your existing class names)
         class_names = [
             "abrasion", "acne", "actinic keratosis", "avulsions",
             "bruise", "bugbite", "burn", "cellulitis", "chickenpox",
@@ -82,8 +93,8 @@ def predict_image(file_stream, session: ort.InferenceSession):
                 "probability": float(prob)
             }
             for name, prob in zip(class_names, probabilities)
-            if prob >= 0.01  # Filter out low-confidence results
-        ], key=lambda x: -x['probability'])[:5]  # Return top 5 results
+            if prob >= 0.01
+        ], key=lambda x: -x['probability'])[:5]
 
     except Exception as e:
         logger.error(f"Prediction error: {str(e)}")
