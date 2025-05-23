@@ -1,0 +1,107 @@
+document.addEventListener('DOMContentLoaded', () => {
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+    const previewImage = document.getElementById('previewImage');
+    const loadingOverlay = document.getElementById('loadingOverlay');
+    const analyzeButton = document.getElementById('analyzeButton');
+
+    // Drag & drop handlers
+    const preventDefaults = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+    };
+
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(event => {
+        dropZone.addEventListener(event, preventDefaults, false);
+    });
+
+    dropZone.addEventListener('dragover', () => {
+        dropZone.classList.add('dragover');
+    });
+
+    dropZone.addEventListener('dragleave', () => {
+        dropZone.classList.remove('dragover');
+    });
+
+    dropZone.addEventListener('drop', (e) => {
+        const files = e.dataTransfer.files;
+        if (files[0]) handleFile(files[0]);
+        dropZone.classList.remove('dragover');
+    });
+
+    // File input change
+    fileInput.addEventListener('change', (e) => {
+        if (e.target.files[0]) handleFile(e.target.files[0]);
+    });
+
+    // Form submission
+    document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        if (!fileInput.files[0]) return;
+
+        loadingOverlay.style.display = 'flex';
+        analyzeButton.disabled = true;
+
+        try {
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+
+            const response = await fetch('/predict', {
+                method: 'POST',
+                body: formData
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(result.error || 'Server error');
+            }
+
+            displayResults(result.predictions);
+
+        } catch (error) {
+            showError(error.message);
+        } finally {
+            loadingOverlay.style.display = 'none';
+            analyzeButton.disabled = false;
+        }
+    });
+
+    function handleFile(file) {
+        if (file.size > 5 * 1024 * 1024) {
+            showError('File size exceeds 5MB limit');
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            previewImage.src = e.target.result;
+            previewImage.style.display = 'block';
+        };
+        reader.readAsDataURL(file);
+    }
+
+    function displayResults(predictions) {
+        const resultsDiv = document.getElementById('results');
+        resultsDiv.innerHTML = predictions.map(pred => `
+            <div class="result-item">
+                <span class="class-name">${pred.class}</span>
+                <div class="confidence-bar">
+                    <div class="confidence-fill"
+                         style="width: ${parseFloat(pred.confidence)}%">
+                    </div>
+                </div>
+                <span class="confidence-value">${pred.confidence}</span>
+            </div>
+        `).join('');
+    }
+
+    function showError(message) {
+        const resultsDiv = document.getElementById('results');
+        resultsDiv.innerHTML = `
+            <div class="error-message">
+                ⚠️ ${message}
+            </div>
+        `;
+    }
+});
