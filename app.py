@@ -70,6 +70,5 @@ def predict():
         logger.error(f"Prediction error: {str(e)}", exc_info=True)
         return jsonify({"success": False, "error": "Analysis failed. Please try again."}), 500
 
-
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=10000)
