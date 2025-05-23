@@ -71,5 +71,5 @@ def predict():
         return jsonify({"success": False, "error": "Analysis failed. Please try again."}), 500
 
 if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 10000))  # Get port from Render
+    port = int(os.environ.get("PORT", 20209))  # Get port from Render
     app.run(host='0.0.0.0', port=port)  # Use environment variable
