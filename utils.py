@@ -47,28 +47,25 @@ def assemble_model(models_dir: Path) -> Path:
 
 
 def preprocess_image(img: Image.Image) -> np.ndarray:
-    """Proper channel ordering for ONNX model"""
+    """Proper NHWC format for ONNX model"""
     # Convert to array and normalize
-    img_array = np.array(img).astype(np.float32) / 255.0
+    img_array = np.array(img.resize((224, 224))).astype(np.float32) / 255.0
 
     # EfficientNetV2 preprocessing (scale to [-1, 1])
     img_array = (img_array - 0.5) * 2.0
 
-    # Convert HWC to NCHW format
-    img_array = img_array.transpose(2, 0, 1)  # Channels first
-    return np.expand_dims(img_array, axis=0)  # Add batch dimension
+    # Add batch dimension (NHWC format)
+    return np.expand_dims(img_array, axis=0)  # Shape: (1, 224, 224, 3)
 
 
 def predict_image(file_stream, session: ort.InferenceSession):
     try:
+        # Load image and preprocess
         img = Image.open(file_stream).convert('RGB')
-        img = img.resize((224, 224))
+        input_tensor = preprocess_image(img)
 
         # Get input name dynamically
         input_name = session.get_inputs()[0].name
-
-        # Create input tensor
-        input_tensor = preprocess_image(img).astype(np.float32)
 
         # Run inference
         outputs = session.run(None, {input_name: input_tensor})
