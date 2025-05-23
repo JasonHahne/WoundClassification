@@ -2,25 +2,23 @@ import os
 import glob
 import logging
 import numpy as np
-from pathlib import Path
 from PIL import Image
 import onnxruntime as ort
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-
-def assemble_model(models_dir: Path) -> Path:
+def assemble_model(models_dir):
     """Combine split ONNX files into single model file"""
     model_name = "wound_model.onnx"
-    model_path = models_dir / model_name
+    model_path = os.path.join(models_dir, model_name)
 
-    if model_path.exists():
+    if os.path.exists(model_path):
         logger.info(f"Found existing model at {model_path}")
         return model_path
 
-    parts_pattern = models_dir / "wound_model_v26.onnx.part*"
-    parts = sorted(glob.glob(str(parts_pattern)),
+    parts_pattern = os.path.join(models_dir, "wound_model_v26.onnx.part*")
+    parts = sorted(glob.glob(parts_pattern),
                    key=lambda x: int(x.split("part")[-1]))
 
     if not parts:
@@ -39,11 +37,10 @@ def assemble_model(models_dir: Path) -> Path:
         return model_path
 
     except Exception as e:
-        if model_path.exists():
-            model_path.unlink()
+        if os.path.exists(model_path):
+            os.remove(model_path)
         logger.error(f"Assembly failed: {str(e)}")
         raise
-
 
 def preprocess_image(img: Image.Image) -> np.ndarray:
     """EXACT preprocessing from training pipeline"""

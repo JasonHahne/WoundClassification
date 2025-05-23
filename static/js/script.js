@@ -4,9 +4,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const disclaimerCheckbox = document.getElementById('disclaimerCheckbox');
     const disclaimerButton = document.getElementById('disclaimerButton');
 
+    // Show modal if not accepted
     if (!localStorage.getItem('disclaimerAccepted')) {
         disclaimerModal.style.display = 'flex';
-        document.body.style.overflow = 'hidden';
+        document.body.classList.add('disclaimer-active');
     }
 
     disclaimerCheckbox.addEventListener('change', () => {
@@ -16,13 +17,13 @@ document.addEventListener('DOMContentLoaded', () => {
     disclaimerButton.addEventListener('click', () => {
         localStorage.setItem('disclaimerAccepted', 'true');
         disclaimerModal.style.display = 'none';
-        document.body.style.overflow = 'auto';
+        document.body.classList.remove('disclaimer-active');
     });
 
+    // Prevent any interactions outside the modal content
     disclaimerModal.addEventListener('click', (e) => {
-        // Only close if clicking the close button or the continue button
         if (!e.target.closest('.disclaimer-content')) {
-            e.stopPropagation();
+            e.stopImmediatePropagation();
         }
     });
 
