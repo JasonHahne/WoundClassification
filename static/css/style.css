@@ -23,24 +23,70 @@ body {
     flex-grow: 1;
 }
 
+/* Updated header layout */
 header {
-    text-align: center;
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
     margin-bottom: 3rem;
 }
 
 .logo {
-    height: 80px;
+    height: 60px;
     width: auto;
-    margin-bottom: 1rem;
+    margin-bottom: 0;
 }
 
 h1 {
     color: var(--primary-color);
     font-size: 2.5rem;
-    margin: 1rem 0;
+    margin: 0;
 }
 
-/* Add loading spinner styles */
+.tagline {
+    color: #666;
+    font-size: 1.2rem;
+    margin-top: 0.5rem;
+}
+
+/* Upload box states */
+.upload-box.has-image .upload-label {
+    display: none;
+}
+
+.upload-box.has-image .preview-image {
+    display: block;
+    margin-top: 0;
+}
+
+.clear-btn {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    background: #ff4444;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 28px;
+    height: 28px;
+    cursor: pointer;
+    display: none;
+    font-size: 1.2rem;
+    line-height: 1;
+    padding: 0;
+    transition: all 0.2s ease;
+}
+
+.clear-btn:hover {
+    background: #cc0000;
+    transform: scale(1.1);
+}
+
+.upload-box.has-image .clear-btn {
+    display: block;
+}
+
+/* Rest of your existing styles */
 .loading-overlay {
     display: none;
     position: fixed;
@@ -71,12 +117,6 @@ h1 {
 @keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
-}
-
-.tagline {
-    color: #666;
-    font-size: 1.2rem;
-    margin-top: 0;
 }
 
 .upload-card {
@@ -128,8 +168,9 @@ h1 {
 
 .preview-image {
     max-width: 100%;
+    max-height: 400px;
+    object-fit: contain;
     border-radius: 8px;
-    margin-top: 1.5rem;
     display: none;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
@@ -218,6 +259,12 @@ footer {
         padding: 1rem;
     }
 
+    header {
+        flex-direction: column;
+        text-align: center;
+        gap: 1rem;
+    }
+
     .result-item {
         flex-direction: column;
         align-items: start;
@@ -226,5 +273,10 @@ footer {
     .confidence-bar {
         width: 100%;
         margin: 1rem 0;
+    }
+
+    .clear-btn {
+        top: 0.5rem;
+        right: 0.5rem;
     }
 }

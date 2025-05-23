@@ -5,6 +5,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const loadingOverlay = document.getElementById('loadingOverlay');
     const analyzeButton = document.getElementById('analyzeButton');
 
+    // Create clear button
+    const clearBtn = document.createElement('button');
+    clearBtn.innerHTML = '&times;';
+    clearBtn.className = 'clear-btn';
+    clearBtn.title = 'Remove image';
+    clearBtn.onclick = () => {
+        fileInput.value = '';
+        dropZone.classList.remove('has-image', 'dragover');
+        previewImage.style.display = 'none';
+    };
+    dropZone.appendChild(clearBtn);
+
     // Drag & drop handlers
     const preventDefaults = (e) => {
         e.preventDefault();
@@ -31,7 +43,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // File input change
     fileInput.addEventListener('change', (e) => {
-        if (e.target.files[0]) handleFile(e.target.files[0]);
+        if (e.target.files[0]) {
+            handleFile(e.target.files[0]);
+        } else {
+            dropZone.classList.remove('has-image');
+            previewImage.style.display = 'none';
+        }
     });
 
     // Form submission
@@ -75,6 +92,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const reader = new FileReader();
         reader.onload = (e) => {
+            dropZone.classList.add('has-image');
             previewImage.src = e.target.result;
             previewImage.style.display = 'block';
         };

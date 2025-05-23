@@ -47,16 +47,11 @@ def assemble_model(models_dir: Path) -> Path:
 
 
 def preprocess_image(img: Image.Image) -> np.ndarray:
-    """Replacement for efficientnet_v2.preprocess_input without TensorFlow"""
-    # Convert to array and normalize to [0, 1]
+    """Fixed dimension ordering"""
     img_array = np.array(img).astype(np.float32) / 255.0
-
-    # Standard EfficientNetV2 preprocessing
-    # Scale to [-1, 1] range
-    img_array = (img_array - 0.5) * 2.0
-
-    # Convert from HWC to CHW format
-    return img_array.transpose(2, 0, 1)
+    img_array = (img_array - 0.5) * 2.0  # Keep this scaling
+    # Remove transpose and add batch dimension with correct shape
+    return np.expand_dims(img_array, axis=0)  # Now shape (1, 224, 224, 3)
 
 
 def predict_image(file_stream, session: ort.InferenceSession):
