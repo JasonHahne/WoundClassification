@@ -23,18 +23,24 @@ body {
     flex-grow: 1;
 }
 
-/* Updated header layout */
 header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.logo-title-group {
     display: flex;
     align-items: center;
     gap: 1.5rem;
-    margin-bottom: 3rem;
+    margin-bottom: 1rem;
 }
 
 .logo {
     height: 60px;
     width: auto;
-    margin-bottom: 0;
 }
 
 h1 {
@@ -46,10 +52,10 @@ h1 {
 .tagline {
     color: #666;
     font-size: 1.2rem;
-    margin-top: 0.5rem;
+    max-width: 600px;
+    margin: 0 auto;
 }
 
-/* Upload box states */
 .upload-box.has-image .upload-label {
     display: none;
 }

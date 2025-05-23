@@ -49,25 +49,22 @@ def assemble_model(models_dir: Path) -> Path:
 def preprocess_image(img: Image.Image) -> np.ndarray:
     """Fixed dimension ordering"""
     img_array = np.array(img).astype(np.float32) / 255.0
-    img_array = (img_array - 0.5) * 2.0  # Keep this scaling
-    # Remove transpose and add batch dimension with correct shape
-    return np.expand_dims(img_array, axis=0)  # Now shape (1, 224, 224, 3)
+    img_array = (img_array - 0.5) * 2.0  # Keep scaling
+
+    # Convert from HWC to CHW format
+    img_array = img_array.transpose(2, 0, 1)
+
+    # Add batch dimension only once
+    return np.expand_dims(img_array, axis=0)
 
 
 def predict_image(file_stream, session: ort.InferenceSession):
-    """Process image and return predictions using ONNX session"""
     try:
-        # Load and resize image
         img = Image.open(file_stream).convert('RGB')
         img = img.resize((224, 224))
-
-        # Preprocess without TensorFlow
         img_array = preprocess_image(img)
 
-        # Add batch dimension
-        img_array = np.expand_dims(img_array, axis=0)
-
-        # Run inference
+        # Remove extra expand_dims call
         inputs = {session.get_inputs()[0].name: img_array}
         outputs = session.run(None, inputs)
 
