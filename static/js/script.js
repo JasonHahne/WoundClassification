@@ -20,9 +20,9 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     disclaimerModal.addEventListener('click', (e) => {
-        if (e.target === disclaimerModal) {
-            disclaimerModal.style.display = 'none';
-            document.body.style.overflow = 'auto';
+        // Only close if clicking the close button or the continue button
+        if (!e.target.closest('.disclaimer-content')) {
+            e.stopPropagation();
         }
     });
 

@@ -1,6 +1,5 @@
 import os
 import logging
-from pathlib import Path
 from flask import Flask, request, render_template, jsonify
 from utils import assemble_model, predict_image
 import onnxruntime as ort
@@ -14,7 +13,7 @@ app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024  # 5MB limit
 # Initialize model once
 try:
     logger.info("Initializing model...")
-    models_dir = Path("models")
+    models_dir = os.path.join(os.path.dirname(__file__), 'models')
     model_path = assemble_model(models_dir)
 
     # Configure ONNX runtime
@@ -24,7 +23,7 @@ try:
 
     # Create session
     app.config['MODEL_SESSION'] = ort.InferenceSession(
-        str(model_path),
+        model_path,
         sess_options=so,
         providers=['CPUExecutionProvider']
     )
@@ -37,11 +36,9 @@ except Exception as e:
     logger.error(f"Model initialization failed: {str(e)}")
     raise RuntimeError("Failed to initialize model") from e
 
-
 @app.route('/')
 def home():
     return render_template('index.html')
-
 
 @app.route('/predict', methods=['POST'])
 def predict():
@@ -68,7 +65,5 @@ def predict():
         logger.error(f"Prediction error: {str(e)}", exc_info=True)
         return jsonify({"success": False, "error": "Analysis failed. Please try again."}), 500
 
-
 if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host='0.0.0.0', port=port)
+    app.run()
