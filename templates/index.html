@@ -8,6 +8,19 @@
     <link rel="icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
 </head>
 <body>
+    <!-- Added Disclaimer Modal -->
+    <div class="disclaimer-overlay" id="disclaimerModal">
+        <div class="disclaimer-content">
+            <h2>Important Disclaimer</h2>
+            <p>This application is developed by a high school student. The information provided may not be accurate and should not be used as a substitute for professional medical advice. By using this service, you agree that you will not hold the developer liable for any consequences arising from its use.</p>
+            <label class="disclaimer-checkbox">
+                <input type="checkbox" id="disclaimerCheckbox">
+                <span>I understand and agree to the terms above</span>
+            </label>
+            <button id="disclaimerButton" disabled>Continue</button>
+        </div>
+    </div>
+
     <div class="loading-overlay" id="loadingOverlay">
         <div class="loading-content">
             <div class="spinner"></div>

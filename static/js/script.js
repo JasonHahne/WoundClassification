@@ -1,4 +1,35 @@
 document.addEventListener('DOMContentLoaded', () => {
+    // Added Disclaimer Logic
+    const disclaimerModal = document.getElementById('disclaimerModal');
+    const disclaimerCheckbox = document.getElementById('disclaimerCheckbox');
+    const disclaimerButton = document.getElementById('disclaimerButton');
+
+    // Check localStorage for previous acceptance
+    if (!localStorage.getItem('disclaimerAccepted')) {
+        disclaimerModal.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+    }
+
+    // Enable button when checkbox is checked
+    disclaimerCheckbox.addEventListener('change', () => {
+        disclaimerButton.disabled = !disclaimerCheckbox.checked;
+    });
+
+    // Handle continue button click
+    disclaimerButton.addEventListener('click', () => {
+        localStorage.setItem('disclaimerAccepted', 'true');
+        disclaimerModal.style.display = 'none';
+        document.body.style.overflow = 'auto';
+    });
+
+    // Close modal when clicking outside
+    disclaimerModal.addEventListener('click', (e) => {
+        if (e.target === disclaimerModal) {
+            disclaimerModal.style.display = 'none';
+            document.body.style.overflow = 'auto';
+        }
+    });
+
     const dropZone = document.getElementById('dropZone');
     const fileInput = document.getElementById('fileInput');
     const previewImage = document.getElementById('previewImage');
