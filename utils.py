@@ -47,26 +47,31 @@ def assemble_model(models_dir: Path) -> Path:
 
 
 def preprocess_image(img: Image.Image) -> np.ndarray:
-    """Fixed dimension ordering"""
+    """Proper channel ordering for ONNX model"""
+    # Convert to array and normalize
     img_array = np.array(img).astype(np.float32) / 255.0
-    img_array = (img_array - 0.5) * 2.0  # Keep scaling
 
-    # Convert from HWC to CHW format
-    img_array = img_array.transpose(2, 0, 1)
+    # EfficientNetV2 preprocessing (scale to [-1, 1])
+    img_array = (img_array - 0.5) * 2.0
 
-    # Add batch dimension only once
-    return np.expand_dims(img_array, axis=0)
+    # Convert HWC to NCHW format
+    img_array = img_array.transpose(2, 0, 1)  # Channels first
+    return np.expand_dims(img_array, axis=0)  # Add batch dimension
 
 
 def predict_image(file_stream, session: ort.InferenceSession):
     try:
         img = Image.open(file_stream).convert('RGB')
         img = img.resize((224, 224))
-        img_array = preprocess_image(img)
 
-        # Remove extra expand_dims call
-        inputs = {session.get_inputs()[0].name: img_array}
-        outputs = session.run(None, inputs)
+        # Get input name dynamically
+        input_name = session.get_inputs()[0].name
+
+        # Create input tensor
+        input_tensor = preprocess_image(img).astype(np.float32)
+
+        # Run inference
+        outputs = session.run(None, {input_name: input_tensor})
 
         # Format results (keep your existing class names)
         class_names = [
