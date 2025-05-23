@@ -1,22 +1,11 @@
-.analyze-button {
-    width: 100%;
-    padding: 1.2rem;
-    background: var(--primary-color);
-    color: white;
-    border: none;
-    border-radius: 8px;
-    font-size: 1.1rem;
-    cursor: pointer;
-    margin-top: 1.5rem;
-    transition: all 0.3s ease;
+:root {
+    --primary-color: #2A5C82;
+    --secondary-color: #5BA4E6;
+    --background-color: #F8F9FF;
+    --text-color: #333;
 }
 
-.analyze-button:hover {
-    background: #1d4560;
-    transform: translateY(-1px);
-    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2);
-}
-
+/* Disclaimer Styles */
 .disclaimer-overlay {
     position: fixed;
     top: 0;
@@ -95,13 +84,7 @@
     box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2);
 }
 
-:root {
-    --primary-color: #2A5C82;
-    --secondary-color: #5BA4E6;
-    --background-color: #F8F9FF;
-    --text-color: #333;
-}
-
+/* Original Styles */
 body {
     font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
     line-height: 1.6;
@@ -120,7 +103,6 @@ body {
     flex-grow: 1;
 }
 
-/* Header layout */
 header {
     text-align: center;
     margin: 2rem 0;
@@ -151,7 +133,6 @@ h1 {
     margin-top: 0.5rem;
 }
 
-/* Upload box styling */
 .upload-card {
     background: white;
     border-radius: 15px;
@@ -170,7 +151,7 @@ h1 {
     min-height: 300px;
     display: flex;
     align-items: center;
-    justify-content: center; /* Added horizontal centering */
+    justify-content: center;
     overflow: hidden;
 }
 
@@ -192,9 +173,7 @@ h1 {
     border-radius: 8px;
     display: none;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    margin: 0 auto; /* Center horizontally */
-    position: relative;
-    left: 0;
+    margin: 0 auto;
 }
 
 .upload-box.has-image .preview-image {
@@ -232,7 +211,6 @@ h1 {
     display: block;
 }
 
-/* Results styling */
 .results-container {
     margin-top: 3rem;
     background: white;
@@ -294,6 +272,66 @@ footer {
     padding: 2rem 0;
 }
 
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(255, 255, 255, 0.9);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.loading-content {
+    text-align: center;
+    padding: 2rem;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.spinner {
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid var(--primary-color);
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 1rem;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.loading-text {
+    color: var(--primary-color);
+    font-weight: 500;
+}
+
+.analyze-button {
+    width: 100%;
+    padding: 1.2rem;
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 1.1rem;
+    cursor: pointer;
+    margin-top: 1.5rem;
+    transition: all 0.3s ease;
+}
+
+.analyze-button:hover {
+    background: #1d4560;
+    transform: translateY(-1px);
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2);
+}
+
 @media (max-width: 768px) {
     .container {
         padding: 1rem;
@@ -317,49 +355,8 @@ footer {
         padding: 1rem;
         min-height: 200px;
     }
-    
+
     .preview-image {
         max-width: 95%;
-    }
-
-    .loading-overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background-color: rgba(255, 255, 255, 0.9);
-        display: none;
-        justify-content: center;
-        align-items: center;
-        z-index: 1000; /* Lower than disclaimer's 2000 */
-    }
-
-    .loading-content {
-        text-align: center;
-        padding: 2rem;
-        background: white;
-        border-radius: 10px;
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-    }
-
-    .spinner {
-        border: 4px solid #f3f3f3;
-        border-top: 4px solid var(--primary-color);
-        border-radius: 50%;
-        width: 40px;
-        height: 40px;
-        animation: spin 1s linear infinite;
-        margin: 0 auto 1rem;
-    }
-
-    @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
-    }
-
-    .loading-text {
-        color: var(--primary-color);
-        font-weight: 500;
     }
 }
